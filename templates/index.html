@@ -1,0 +1,307 @@
+<!-- templates/index.html -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Contactless Glucose Monitoring</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/css/bootstrap.min.css" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f0f4f8;
+            color: #333;
+            padding-top: 20px;
+        }
+        .card {
+            border-radius: 10px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            margin-bottom: 20px;
+            overflow: hidden;
+        }
+        .card-header {
+            background-color: #2c3e50;
+            color: white;
+            font-weight: 600;
+        }
+        .glucose-value {
+            font-size: 3rem;
+            font-weight: 700;
+            text-align: center;
+            padding: 20px 0;
+        }
+        .glucose-normal {
+            color: #28a745;
+        }
+        .glucose-warning {
+            color: #fd7e14;
+        }
+        .glucose-danger {
+            color: #dc3545;
+        }
+        .status-indicator {
+            display: inline-block;
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            margin-right: 5px;
+        }
+        .status-active {
+            background-color: #28a745;
+            animation: pulse 2s infinite;
+        }
+        .status-inactive {
+            background-color: #dc3545;
+        }
+        @keyframes pulse {
+            0% {
+                opacity: 1;
+            }
+            50% {
+                opacity: 0.5;
+            }
+            100% {
+                opacity: 1;
+            }
+        }
+        .video-container {
+            position: relative;
+            width: 100%;
+            background-color: #000;
+            border-radius: 5px;
+            overflow: hidden;
+        }
+        .video-container img {
+            width: 100%;
+            height: auto;
+        }
+        .eye-tracking-display {
+            width: 100%;
+            height: 150px;
+            background-color: #000;
+            border-radius: 5px;
+            overflow: hidden;
+        }
+        .instructions {
+            background-color: #e9ecef;
+            padding: 15px;
+            border-radius: 5px;
+            margin-bottom: 20px;
+        }
+        .chart-container {
+            position: relative;
+            height: 300px;
+            width: 100%;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="row mb-4">
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-header">
+                        <h1 class="text-center mb-0">Contactless Glucose Monitoring</h1>
+                    </div>
+                    <div class="card-body">
+                        <p class="text-center lead">Using computer vision and AI for non-invasive glucose estimation</p>
+                        <div id="status" class="text-center mb-3">
+                            <span class="status-indicator status-inactive" id="statusIndicator"></span>
+                            <span id="statusText">Initializing...</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="row">
+            <!-- Main video feed and glucose reading -->
+            <div class="col-md-8">
+                <div class="card">
+                    <div class="card-header">Camera Feed</div>
+                    <div class="card-body p-0">
+                        <div class="video-container">
+                            <img src="{{ url_for('video_feed') }}" alt="Video Feed">
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="card">
+                    <div class="card-header">Glucose Trend</div>
+                    <div class="card-body">
+                        <div class="chart-container">
+                            <canvas id="glucoseChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Side panel with glucose reading and eye tracking -->
+            <div class="col-md-4">
+                <div class="card">
+                    <div class="card-header">Current Glucose Level</div>
+                    <div class="card-body p-0">
+                        <div id="glucoseValue" class="glucose-value glucose-normal">-- mg/dL</div>
+                        <div class="text-center mb-3">
+                            <span id="glucoseStatus">Waiting for data...</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="card-header">Eye Tracking</div>
+                    <div class="card-body p-0">
+                        <div class="eye-tracking-display">
+                            <img src="{{ url_for('eye_feed') }}" alt="Eye Tracking" style="width: 100%; height: 100%; object-fit: contain;">
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="card-header">Instructions</div>
+                    <div class="card-body">
+                        <ul>
+                            <li>Make sure your face is well-lit</li>
+                            <li>Look directly at the camera</li>
+                            <li>Keep your eyes open</li>
+                            <li>Stay still during measurement</li>
+                            <li>Wait for data collection (20 frames)</li>
+                        </ul>
+                        <div class="alert alert-info mt-3">
+                            <small>This is a simulation for demonstration purposes. Real glucose monitoring would require medical-grade calibration and validation.</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Initialize Chart.js
+        const ctx = document.getElementById('glucoseChart').getContext('2d');
+        const glucoseChart = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: [],
+                datasets: [{
+                    label: 'Glucose Level (mg/dL)',
+                    data: [],
+                    borderColor: 'rgb(75, 192, 192)',
+                    tension: 0.2,
+                    borderWidth: 2,
+                    fill: false
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    y: {
+                        beginAtZero: false,
+                        min: 70,
+                        max: 180,
+                        grid: {
+                            display: true
+                        }
+                    },
+                    x: {
+                        ticks: {
+                            maxRotation: 0,
+                            autoSkip: true,
+                            maxTicksLimit: 10
+                        }
+                    }
+                },
+                plugins: {
+                    legend: {
+                        display: false
+                    }
+                }
+            }
+        });
+
+        // Update status indicator
+        function updateStatus(active) {
+            const indicator = document.getElementById('statusIndicator');
+            const text = document.getElementById('statusText');
+            
+            if (active) {
+                indicator.classList.remove('status-inactive');
+                indicator.classList.add('status-active');
+                text.innerText = 'System Active';
+            } else {
+                indicator.classList.remove('status-active');
+                indicator.classList.add('status-inactive');
+                text.innerText = 'Waiting for data...';
+            }
+        }
+
+        // Update glucose value display
+        function updateGlucoseDisplay(value) {
+            const glucoseValue = document.getElementById('glucoseValue');
+            const glucoseStatus = document.getElementById('glucoseStatus');
+            
+            glucoseValue.innerText = value.toFixed(1) + ' mg/dL';
+            
+            // Remove all classes
+            glucoseValue.classList.remove('glucose-normal', 'glucose-warning', 'glucose-danger');
+            
+            // Add appropriate class based on value
+            if (value < 70) {
+                glucoseValue.classList.add('glucose-danger');
+                glucoseStatus.innerText = 'Low glucose level';
+            } else if (value > 140) {
+                glucoseValue.classList.add('glucose-warning');
+                glucoseStatus.innerText = 'High glucose level';
+            } else {
+                glucoseValue.classList.add('glucose-normal');
+                glucoseStatus.innerText = 'Normal glucose level';
+            }
+        }
+
+        // Fetch glucose data
+        function fetchGlucoseData() {
+            fetch('/glucose_data')
+                .then(response => response.json())
+                .then(data => {
+                    if (data.glucose > 0) {
+                        updateStatus(true);
+                        updateGlucoseDisplay(data.glucose);
+                    } else {
+                        updateStatus(false);
+                    }
+                })
+                .catch(error => {
+                    console.error('Error fetching glucose data:', error);
+                    updateStatus(false);
+                });
+        }
+
+        // Update chart with new data
+        function updateChart() {
+            fetch('/glucose_chart')
+                .then(response => response.json())
+                .then(data => {
+                    // Only update if we have data
+                    if (data.times.length > 0) {
+                        // Format times as seconds
+                        const formattedTimes = data.times.map(time => time.toFixed(0) + 's');
+                        
+                        // Update chart data
+                        glucoseChart.data.labels = formattedTimes;
+                        glucoseChart.data.datasets[0].data = data.values;
+                        glucoseChart.update();
+                    }
+                })
+                .catch(error => {
+                    console.error('Error updating chart:', error);
+                });
+        }
+
+        // Start periodic updates
+        setInterval(fetchGlucoseData, 1000);  // Check glucose every second
+        setInterval(updateChart, 5000);       // Update chart every 5 seconds
+    </script>
+</body>
+</html>
