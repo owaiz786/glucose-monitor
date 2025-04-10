@@ -435,7 +435,7 @@ def glucose_chart():
     return jsonify(data)
 
 if __name__ == '__main__':
-    # Start camera thread
+    app.run(host='0.0.0.0', port=int(os.environ.get("PORT", 5000)))
     camera_thread = threading.Thread(target=generate_frames)
     camera_thread.daemon = True
     camera_thread.start()
